@@ -1,6 +1,11 @@
 # PageFinder
 
-![Gameplay](./docs/images/gameplay.gif)
+
+<p align="center">
+  <img src="./gifs/gameplay.gif" alt="Gameplay">
+  <img src="./gifs/Reward.gif" alt="Gameplay">
+  <img src="./gifs/Diary.gif" alt="Gameplay">
+</p>
 
 `PageFinder`는 3D 액션 로그라이트 게임으로, 플레이어의 행동이 전장에 '잉크'로 남고, 축적된 잉크를 활용해 다양한 특수 효과를 발동시켜 주어진 스테이지를 클리어하는 게임입니다.
 
@@ -19,7 +24,7 @@
 
 ## Tech Stack
 
-- **Engine**: Unity
+- **Engine**: Unity 6(6000.0.34f1)
 - **Language**: C#
 
 <br>
