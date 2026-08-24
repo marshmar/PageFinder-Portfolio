@@ -77,30 +77,26 @@ Growth / UI
 
 ### 주요 클래스
 
-| 클래스 | 책임 |
+| 클래스 | 역할 |
 |---|---|
-| [`PlayerInputInvoker.cs`] | 플레이어 입력 및 우선순위 기반 행동 요청 처리 |
-| [`ScriptSystemManager.cs`] | 보상(Script) 데이터 파싱 및 생성, UI 연결 등의 흐름 관리|
-| [`EventManager.cs`] | Observer 기반 이벤트 구독/전파 및 메시지 전달 관리 |
-| [`GeometryUtils.cs`] | 잉크 합성 조건 판별 |
-| [`Buff.cs`], [`CommandInvoker.cs`] | 버프 시스템 관리|
-| [`UIManager.cs`] | UI Panel 등록, 전환 및 관리, 게임 이벤트에 따른 UI 상태 전환 |
+| [`PlayerInputInvoker.cs`](./PageFinder/Assets/02.Scripts/Entity/Player/PlayerInputInvoker.cs) | 플레이어 입력을 받고 우선순위에 따라 행동 Command 실행 요청 처리 |
+| [`ScriptSystemManager.cs`](./PageFinder/Assets/02.Scripts/Script/ScriptSystemManager.cs) | 보상(Script) 데이터 파싱 및 생성, UI 연동 흐름 관리|
+| [`EventManager.cs`](./PageFinder/Assets/02.Scripts/Mananger/EventManager.cs) | Observer 기반 이벤트 구독•해제 및 이벤트 전달 관리 |
+| [`GeometryUtils.cs`](./PageFinder/Assets/02.Scripts/Utils/GeometryUtils.cs) | 잉크 합성 조건 판별 |
+| [`Buff.cs`](./PageFinder/Assets/02.Scripts/Buff/Buffs.cs), [`CommandInvoker.cs`](./PageFinder/Assets/02.Scripts/Buff/CommandInvoker.cs) | Buff의 등록 및 실행 흐름 관리|
+| [`UIManager.cs`](./PageFinder/Assets/02.Scripts/UI/UIManager/NewUIManager.cs) | UI Panel 등록•전환 및 관리, 게임 이벤트에 따른 UI 상태 전환 |
 
 <br>
 
 ## Technical Highlights
 
-### 1. 시스템 확장성을 고려한 Ability 구조
+### 1. 요구사항 변화에 대응한 Strategy 패턴 기반 Ability System 설계
 
 #### 문제
-
-Ability마다 실행 방식이 달라 Player 클래스 내부에서 직접 처리할 경우  
-Player 클래스가 비대해지고, 새로운 Ability를 추가할 때 기존 코드를 계속 수정해야 하는 문제가 있었습니다.
+초기에는 기본 공격, 대쉬, 스킬의 실행 로직을 각각의 Player Controller에서 직접 처리했습니다. 이후 강화 시스템이 추가되면서 기존 Ability에 새로운 기능을 조합할 필요가 생겨 Decorator 패턴을 적용했습니다. 그러나 강화가 단순한 부가 효과 추가를 넘어 Ability의 실행 로직 자체를 변경하는 형태로 확장되면서, Ability의 실행 로직 자체를 변경하는 형태로 확장되면서, Decorator만으로 다양한 행동 변화를 표현하기 어려워졌습니다.
 
 #### 접근
-
-공통 실행 흐름과 Ability별 행동을 분리하고,  
-각 Ability가 독립적으로 동작할 수 있도록 구성했습니다.
+Ability의 데이터와 행동 로직을 분리하고, IScript
 
 #### 결과
 
@@ -128,7 +124,7 @@ ScriptableObject와 외부 데이터를 활용하여
 - 데이터 관리 일관성 향상
 - 콘텐츠 추가 비용 감소
 
----
+<br>
 
 ## Links
 
@@ -137,11 +133,3 @@ ScriptableObject와 외부 데이터를 활용하여
 - [Blog](링크)
 - [Original Team Repository](링크)
 
----
-
-## Notes
-
-- 팀 프로젝트에서는 **본인 담당 범위와 팀 전체 구현을 명확히 구분**
-- README에는 핵심만 작성하고, 깊은 기술 설명은 `docs/` 또는 블로그로 분리
-- 기술 이름 자체보다 **왜 그렇게 설계했는지**를 중심으로 설명
-- 설명하기 어려운 패턴이나 기술은 억지로 강조하지 않기
