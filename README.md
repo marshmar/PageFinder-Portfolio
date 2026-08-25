@@ -7,7 +7,7 @@
   <img src="./gifs/Diary.gif" alt="Gameplay">
 </p>
 
-`PageFinder`는 3D 액션 로그라이트 게임으로, 플레이어의 행동이 전장에 '잉크'로 남고, 축적된 잉크를 활용해 다양한 특수 효과를 발동시켜 주어진 스테이지를 클리어하는 게임입니다.
+`PageFinder`는 3D 캐주얼 액션 게임으로, 플레이어의 행동이 전장에 '잉크'로 남고, 축적된 잉크를 활용해 다양한 특수 효과를 발동시켜 주어진 스테이지를 클리어하는 게임입니다.
 
 <br>
 
@@ -95,46 +95,80 @@ Growth / UI
 
 ## Technical Highlights
 
-### 1. 요구사항 변화에 대응한 Strategy 패턴 기반 Ability System 설계
+### 1. Strategy 패턴 기반 Ability System 설계
 
 #### 문제
-초기에는 기본 공격, 대쉬, 스킬의 실행 로직을 각각의 Player Controller에서 직접 처리했습니다. 이후 강화 시스템이 추가되면서 기존 Ability에 새로운 기능을 조합할 필요가 생겨 Decorator 패턴을 적용했습니다. 그러나 강화가 단순한 부가 효과 추가를 넘어 Ability의 실행 로직 자체를 변경하는 형태로 확장되면서, Ability의 실행 로직 자체를 변경하는 형태로 확장되면서, Decorator만으로 다양한 행동 변화를 표현하기 어려워졌습니다.
+초기에는 기본 공격, 대쉬, 스킬의 실행 로직을 각각의 Controller에서 직접 처리했습니다. 
+그러나 기능이 확장되면서 Controller 내부의 상태 검사와 실행 로직이 증가했고, 강화 시스템이 추가된 이후에는 수치 변화뿐 아니라 Ability의 실행 방식 자체가 변경되는 요구사항도 발생했습니다.
+이 구조를 유지할 경우 새로운 Ability나 강화 행동을 추가할 때마다 기존 Controller의 조건 분기와 실행 로직을 수정해야 해, 시스템 간 결합도와 유지보수 비용이 증가하는 문제가 있었습니다.
 
 #### 접근
-Ability의 데이터와 행동 로직을 분리하고, IScript
+Player Controller가 구체적인 Ability 실행 방식을 직접 처리하지 않고, 현재 장착된 
+[`BaseScript`](./PageFinder/Assets/02.Scripts/Script/BaseScript.cs)에 행동 실행을 위임하도록 구조를 변경했습니다.
+BaseScript 내부에서는 Ability의 데이터와 실행 로직을 분리하고, 실행 행동을 [`IScriptBehaviour`](./PageFinder/Assets/02.Scripts/Script/IScriptBehaviour.cs) 인터페이스로 추상화했습니다. [`DashBehaviour`](./PageFinder/Assets/02.Scripts/Script/DashBehaviour.cs)와 같은 개별 Behaviour가 실제 행동을 담당하도록 구성하여, Controller는 구체적인 구현을 알지 않고 동일한 인터페이스를 통해 Ability를 실행할 수 있도록 했습니다.
+
+```text
+Player Controller
+        ↓ 실행 요청
+    BaseScript
+        ↓ 행동 위임
+ IScriptBehaviour
+   ├─ AttackBehaviour
+   ├─ DashBehaviour
+   └─ SkillBehaviour
+```
+
+또한 플레이 중 보상 및 강화에 따라 Controller가 참조하는 `BaseScript`를 교체할 수 있도록 구성하여, Player 로직을 수정하지 않고 현재 사용 중인 Ability를 동적으로 변경할 수 있도록 했습니다.
 
 #### 결과
 
-- Player 클래스의 책임 감소
-- 신규 Ability 추가 시 기존 코드 변경 최소화
-- Ability 로직 재사용성 향상
+- 신규 Ability 및 행동 추가 시 기존 Player Controller 수정 최소화
+- 강화에 따른 행동 변경을 조건 분기 증가 없이 독립적으로 처리
+- Ability별 변경 사항의 영향 범위를 개별 Behaviour 내부로 제한
 
----
+<br>
 
-### 2. 데이터 기반 성장 시스템
+### 2. 우선순위 기반 Input/Command 처리
 
 #### 문제
 
-성장 요소가 증가하면서 코드 내부에 수치를 직접 작성하는 방식은  
-유지보수와 밸런스 조정 비용이 커지는 문제가 있었습니다.
+공격, 대쉬, 스킬과 같은 여러 행동 입력 짧은 시간 안에 동시에 발생할 수 있고, 플레이어의 현재 상태에 따라 입력 시점에 즉시 실행할 수 없는 경우가 있었습니다.
+각 입력 콜백에서 행동을 바로 실행할 경우 행동 간 우선순위를 일관되게 제어하기 어렵고, 실행 불가능한 순간에 입력된 조작이 그대로 소실될 수 있었습니다.
 
 #### 접근
 
-ScriptableObject와 외부 데이터를 활용하여  
-게임 로직과 밸런스 데이터를 분리했습니다.
+각 플레이어 입력을 [`InputCommand`](./PageFinder/Assets/02.Scripts/Buff/Command.cs) 객체로 캡슐화하고, 입력 발생 시 즉시 행동을 실행하지 않고 [`PlayerInputInvoker`](./PageFinder/Assets/02.Scripts/Entity/Player/PlayerInputInvoker.cs)에 전달하도록 설계했습니다.
+각 Command는 실행 가능 여부(`IsExecutable`), 우선순위(`Priority`), 입력 시점(`Timestamp`), 입력 유효 시간(`ExpirationTimeSec`)을 가지며, [`PlayerInputInvoker`](./PageFinder/Assets/02.Scripts/Entity/Player/PlayerInputInvoker.cs)가 매 프레임 다음 조건을 검사하도록 구현했습니다.
+
+```text
+Input Action 
+      ↓ 
+InputCommand 생성 
+      ↓ 
+PlayerInputInvoker 
+      ↓ 
+유효 시간 검사 
+      ↓ 
+실행 가능 여부 검사 
+      ↓ 
+우선순위 비교 
+      ↓ 
+최우선 Command 실행
+```
+
+실행 가능한 입력이 여러 개 존재할 경우 우선순위가 가장 높은 Command를 선택하며, 현재 실행할 수 없는 입력은 설정된 유효 시간 동안 유지하여 이후 실행 가능 여부를 다시 검사하도록 설계했습니다.
 
 #### 결과
 
-- 코드 수정 없이 성장 수치 조정 가능
-- 데이터 관리 일관성 향상
-- 콘텐츠 추가 비용 감소
+- 공격, 스킬, 대쉬 입력간 실행 우선순위를 일관된 규칙으로 관리
+- 행동 불가능 시점에 입력된 조작을 일정 시간 보관하여 입력 누락 완화
+- 입력 감지와 실제 Player 행동 실행 책임을 Command 단위로 분리
+- 신규 Player Action 추가 시 독립적인 Command 구현을 통해 기존 입력 처리 로직의 변경 최소화
 
 <br>
 
 ## Links
 
-- [Gameplay Video](링크)
-- [Technical Documentation](링크)
-- [Blog](링크)
-- [Original Team Repository](링크)
+- [Gameplay Video](https://www.youtube.com/watch?v=APIvWz_owCs)
+- [Original Team Repository](https://github.com/marshmar/PageFinder)
 

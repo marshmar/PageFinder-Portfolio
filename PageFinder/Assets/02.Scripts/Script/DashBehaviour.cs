@@ -78,7 +78,6 @@ public class DashBehaviour : IChargeBehaviour
 
     private void PlayAudio()
     {
-        // ´ë½¬ È¿°úÀ½ Àç»ı
         AudioManager.Instance.Play(Sound.dashVfx1, AudioClipType.DashSfx);
     }
 
@@ -111,19 +110,19 @@ public class DashBehaviour : IChargeBehaviour
                 Vector3 toDest = dashDest - currentPos;
                 Vector3 normalizedDir = toDest.normalized;
 
-                // ÀÌµ¿ °Å¸® °è»ê
+                // ì´ë™ ê±°ë¦¬ ê³„ì‚°
                 float moveDistance = dashSpeed * Time.fixedDeltaTime;
 
-                // ¸ñÇ¥ ÁöÁ¡±îÁö ³²Àº °Å¸®
+                // ëª©í‘œ ì§€ì ê¹Œì§€ ë‚¨ì€ ê±°ë¦¬
                 float remainingDistance = toDest.magnitude;
 
-                // ÃÊ°úÇÏÁö ¾Êµµ·Ï °Å¸® Á¦ÇÑ
+                // ëŒ€ì‰¬ ê±°ë¦¬ë¥¼ ì´ˆê³¼í•˜ì§€ ì•Šë„ë¡ ê±°ë¦¬ ì œí•œ
                 Vector3 movement = normalizedDir * Mathf.Min(moveDistance, remainingDistance);
 
-                // ½ÇÁ¦ ÀÌµ¿
+                // ì‹¤ì œ ì´ë™
                 playerUtils.Rigid.MovePosition(currentPos + movement);
 
-                // À×Å© ¸¶Å© Ã³¸®
+                // ì‰í¬ ë§ˆí¬ ì²˜ë¦¬
                 float size = Vector3.Distance(originPos, playerUtils.Tr.position);
 
                 if (inkMarkTransform)

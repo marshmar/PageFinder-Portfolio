@@ -6,7 +6,6 @@ using System;
 public abstract class ScriptContext { }
 public abstract class BaseScript
 {
-    // ª˝º∫¿⁄
     public BaseScript()
     {
         scriptData = ScriptableObject.CreateInstance<NewScriptData>();
@@ -14,12 +13,10 @@ public abstract class BaseScript
     }
 
     protected bool[] upgraded = new bool[4] { true, false, false, false};
-    // Ω∫≈©∏≥∆Æ µ•¿Ã≈Õ ≈¨∑°Ω∫
     protected NewScriptData scriptData;
-    // Ω∫≈©∏≥∆Æ «‡µø
     protected IScriptBehaviour scriptBehaviour;
 
-    // Ω∫≈©∏≥∆Æ Ω∫∆ºƒø ΩΩ∑‘
+    // Ïä§ÌÅ¨Î¶ΩÌä∏ Ïä§Ìã∞Ïª§ Ïä¨Î°Ø
     protected Sticker generalSticker;
     protected Sticker[] dedicatedStickers;
     
@@ -70,13 +67,12 @@ public abstract class BaseScript
 
 
     #region Utils
-    // æ∆¿Ãµ
     public int GetID()
     {
         return scriptData.scriptID;
     }
 
-    // º∫±ﬁ
+    // ÏÑ±Í∏â
     public int GetCurrRarity()
     {
         return scriptData.rarity;
@@ -91,13 +87,12 @@ public abstract class BaseScript
     {
         return scriptData.scriptName;
     }
-    // Ω∫≈©∏≥∆Æ ƒ⁄Ω∫∆Æ
+
     public float GetInkCost()
     {
         return scriptData.inkCost;
     }
 
-    // Ω∫≈©∏≥∆Æ ≈∏¿‘
     public NewScriptData.ScriptType GetScriptType()
     {
         return scriptData.scriptType;   
@@ -121,7 +116,6 @@ public abstract class BaseScript
         return copiedData;
     }
 
-    // Ω∫≈©∏≥∆Æ µ•¿Ã≈Õ ∫πªÁ
     public void CopyData(NewScriptData copyData)
     {
         scriptData.CopyData(copyData);
