@@ -95,7 +95,46 @@ Growth / UI
 
 ## Technical Highlights
 
-### 1. Strategy 패턴 기반 Ability System 설계
+### 1. 도형 교차 면적 기반 잉크 합성 판정
+
+#### 문제
+원형 또는 사각형 잉크가 일정 비율 이상 겹쳤을 때 합성되도록 구현해야 했습니다.
+Unity의 Collider API로 충돌 여부와 접촉 지점은 확인할 수 있지만, 실제로 겹친 영역의 면적과 각 잉크에서 차지하는 비율은 제공하지 않아 별도의 계산 로직이 필요했습니다.
+
+#### 접근
+도형 조합에 따라 교차 면적 계산 방식을 분리했습니다.
+
+- 원-원: 두 원의 반지름과 중심 거리를 이용한 교차 면적 공식 적용
+- 사각형-사각형: Sutherland-Hodgman Polygon Clipping으로 교차 Polygon 생성
+- 사각형-원: 원과 사각형 변의 교점을 구한 뒤 교차 영역을 Polygon으로 근사
+- 생성된 Polygon 면적은 신발끈 공식으로 계산
+
+계산된 교차 면적을 각 잉크의 전체 면적과 비교하여, 설정된 비율 이상일 때만 합성이 가능하도록 구현했습니다.
+
+```text
+두 잉크의 도형 확인
+        ↓ 
+도형 조합별 교차 영역 계산
+        ↓
+교차 Polygon 생성
+        ↓
+신발끈 공식으로 면적 계산
+        ↓
+합성 가능 여부 판정
+```
+
+위치, 회전, 도형 조합에 따른 계산 결과는 별도의 Test Scene에서 검증했습니다.
+
+#### 결과
+- 단순 충돌 여부가 아닌 실제 중첩 비율을 기준으로 합성 가능 여부 판정
+- 회전된 사각형을 포함한 위치•회전•도형 조합 처리
+- 별도의 Test Scene을 구성하여 시각적 검증
+
+#### 한계
+- 원-사각형 교차 영역은 곡선을 Polygon으로 근사하므로 일부 형태에서 정확도에 한계가 있음
+- 새로운 잉크 도형을 추가할 경우 기존 도형과의 조합별 계산 로직이 추가로 필요함
+
+### 2. Data 기반 Ability System 설계
 
 #### 문제
 초기에는 기본 공격, 대쉬, 스킬의 실행 로직을 각각의 Controller에서 직접 처리했습니다. 
@@ -103,36 +142,49 @@ Growth / UI
 이 구조를 유지할 경우 새로운 Ability나 강화 행동을 추가할 때마다 기존 Controller의 조건 분기와 실행 로직을 수정해야 해, 시스템 간 결합도와 유지보수 비용이 증가하는 문제가 있었습니다.
 
 #### 접근
+Ability 시스템을 데이터, 실행, 생성, 소유 계층으로 분리했습니다.
+
+| 책임 | 구성 요소 |
+|---|---|
+| 강화 단계별 수치 | CSV / [ScriptData](./PageFinder/Assets/02.Scripts/Script/NewScriptData.cs) |
+| Ability 생성 | [ScriptFactory](./PageFinder/Assets/02.Scripts/Script/ScriptFactory.cs) |
+| 실행 로직 | [IScriptBehaviour](./PageFinder/Assets/02.Scripts/Script/IScriptBehaviour.cs) |
+| 장착 및 보유 상태 | [`ScriptInventory`](./PageFinder/Assets/02.Scripts/Script/ScriptInventory.cs) |
+| 플레이어 의존성 전달 | [ScriptContext](./PageFinder/Assets/02.Scripts/Script/BaseScript.cs)|
+
 Player Controller가 구체적인 Ability 실행 방식을 직접 처리하지 않고, 현재 장착된 
 [`BaseScript`](./PageFinder/Assets/02.Scripts/Script/BaseScript.cs)에 행동 실행을 위임하도록 구조를 변경했습니다.
 BaseScript 내부에서는 Ability의 데이터와 실행 로직을 분리하고, 실행 행동을 [`IScriptBehaviour`](./PageFinder/Assets/02.Scripts/Script/IScriptBehaviour.cs) 인터페이스로 추상화했습니다. [`DashBehaviour`](./PageFinder/Assets/02.Scripts/Script/DashBehaviour.cs)와 같은 개별 Behaviour가 실제 행동을 담당하도록 구성하여, Controller는 구체적인 구현을 알지 않고 동일한 인터페이스를 통해 Ability를 실행할 수 있도록 했습니다.
+전투 보상과 상점에서 획득한 Ability는 `AddScript`라는 단일 진입점으로 전달됩니다. 신규 Ability라면 Factory로 생성하고, 이미 보유한 Ability라면 기존 인스턴스의 강화 단계를 올리도록 구현했습니다.
 
 ```text
-Player Controller
-        ↓ 실행 요청
-    BaseScript
-        ↓ 행동 위임
- IScriptBehaviour
-   ├─ AttackBehaviour
-   ├─ DashBehaviour
-   └─ SkillBehaviour
+전투 보상 / 상점
+        ↓
+AddScript(scriptID)
+        ↓
+보유 여부 확인
+   ┌────┴────┐
+ 신규          보유
+   ↓            ↓
+Factory 생성   기존 Ability 강화
+   ↓
+슬롯 교체 → Context 주입
 ```
 
 또한 플레이 중 보상 및 강화에 따라 Controller가 참조하는 `BaseScript`를 교체할 수 있도록 구성하여, Player 로직을 수정하지 않고 현재 사용 중인 Ability를 동적으로 변경할 수 있도록 했습니다.
 
 #### 결과
 
-- 신규 Ability 및 행동 추가 시 기존 Player Controller 수정 최소화
-- 강화에 따른 행동 변경을 조건 분기 증가 없이 독립적으로 처리
-- Ability별 변경 사항의 영향 범위를 개별 Behaviour 내부로 제한
+- 신규 Ability 추가 범위를 CSV 데이터, 개별  Behaviour, Factory 등록으로 제한하여 Player Controller 수정 제거
+- 보상과 상점 등 획득 경로가 늘어나도, `AddScript()` 단일 진입점 유지
 
 <br>
 
-### 2. 우선순위 기반 Input/Command 처리
+### 3. 우선순위 기반 Input/Command 처리
 
 #### 문제
 
-공격, 대쉬, 스킬과 같은 여러 행동 입력 짧은 시간 안에 동시에 발생할 수 있고, 플레이어의 현재 상태에 따라 입력 시점에 즉시 실행할 수 없는 경우가 있었습니다.
+공격, 대시, 스킬과 같은 여러 행동 입력이 짧은 시간 안에 동시에 발생할 수 있고, 플레이어의 현재 상태에 따라 입력 시점에 즉시 실행할 수 없는 경우가 있었습니다.
 각 입력 콜백에서 행동을 바로 실행할 경우 행동 간 우선순위를 일관되게 제어하기 어렵고, 실행 불가능한 순간에 입력된 조작이 그대로 소실될 수 있었습니다.
 
 #### 접근
@@ -160,7 +212,7 @@ PlayerInputInvoker
 
 #### 결과
 
-- 공격, 스킬, 대쉬 입력간 실행 우선순위를 일관된 규칙으로 관리
+- 공격, 스킬, 대시 입력간 실행 우선순위를 일관된 규칙으로 관리
 - 행동 불가능 시점에 입력된 조작을 일정 시간 보관하여 입력 누락 완화
 - 입력 감지와 실제 Player 행동 실행 책임을 Command 단위로 분리
 - 신규 Player Action 추가 시 독립적인 Command 구현을 통해 기존 입력 처리 로직의 변경 최소화
